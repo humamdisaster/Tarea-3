@@ -107,7 +107,74 @@ void mostrarMenuJuego(){
     printf("3. Avanzar\n");
     printf("4. Reiniciar\n");
     printf("5. Salir\n");
-    printf("Selecciona: ");
+    printf("Selecciona una opción del 1 al 5 para continuar...\n");
+}
+
+void mostrarEscenarios(Escenario *escenario){
+    printf("\n--- %s ---\n", escenario->nombre);
+    printf("Descripción: %s\n", escenario->descripcion);
+
+    printf("\nItems disponibles:\n");
+    for (Item *item = list_first(escenario->items); item != NULL; item = list_next(escenario->items)){
+        printf(" - %s (%d pts, %d kg)\n", item->nombre, item->puntos, item->peso);
+    }
+    printf("\nDirecciones disponibles:\n");
+    MapPair *pair = map_first(escenario->conexiones);
+    while (pair != NULL){
+        printf(" - %s\n", (char*)pair->key);
+        pair = map_next(escenario->conexiones);
+    }
+    printf("\n");
+}
+
+void mostrarEstado(EstadoJuego *estado){
+    printf("\nTiempo restante: %d\n", estado->tiempo);
+    printf("Puntaje: %d\n", estado->puntaje);
+    printf("Peso: %d\n", estado->peso);
+
+    printf("Inventario:\n");
+    for (Item *item = list_first(estado->inventario); item != NULL; item = list_next(estado->inventario)){
+        printf(" - %s (%d pts, %d kg)\n", item->nombre, item->puntos, item->peso);
+    }
+}
+
+void recogerItem(EstadoJuego *estado){
+    printf("Selecciona un item para recoger:\n");
+    int i = 1;
+    Item * item = list_first(estado->actual->items);
+    while (item != NULL){
+        printf("%d. %s\n", i++, item->nombre);
+        item = list_next(estado->actual->items);
+    }
+    int seleccion;
+    scanf("%d", &seleccion);
+    while (seleccion == 1){
+        if (seleccion < 1 || seleccion > list_size(estado->actual->items)) break;
+
+        Item *target = NULL;
+        int pos = 1;
+        item = list_first(estado->actual->items);
+        while (item != NULL && pos < seleccion){
+            item = list_next(estado->actual->items);
+            pos++;
+        }
+        if (item != NULL){
+            list_pushBack(estado->inventario, item);
+            estado->puntaje += item->puntos;
+            estado->peso += item->peso;
+
+            List *nuevosItems= list_create();
+            Item *current = list_first(estado->actual->items);
+            while (current != NULL){
+                if (current != item) list_pushBack(nuevosItems, current);
+                current = list_next(estado->actual->items);
+            }
+            list_clean(estado->actual->items);
+            estado->actual->items = nuevosItems;
+        }
+        if (getchar() == '\n') break; // Esperar a que el usuario presione Enter
+    }
+    estado->tiempo--;
 }
 
 void iniciarPartida(Map *escenarios){
@@ -163,7 +230,7 @@ void iniciarPartida(Map *escenarios){
         printf("Se acabó el tiempo. Fin del juego.\n");
     }
     presioneTeclaParaContinuar();
-    list_clean(estado.inventario); // Limpiar el inventario
+    list_clean(estado.inventario); // Limpiar el inventario 
 }
 
 int main(){
