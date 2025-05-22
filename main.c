@@ -177,6 +177,66 @@ void recogerItem(EstadoJuego *estado){
     estado->tiempo--;
 }
 
+void descartarItem(EstadoJuego *estado){
+    printf("\nSelecciona un item para descartar:\n");
+
+    int i = 1;
+    Item *item = list_first(estado->inventario);
+    while (item != NULL){
+        printf("%d. %s\n", i++, item->nombre);
+        item = list_next(estado->inventario);
+    }
+
+    int seleccion;
+    scanf("%d", &seleccion);
+    while (seleccion == 1){
+        if (seleccion < 1 || seleccion > list_size(estado->inventario)) break;
+
+        Item *target = NULL;
+        int pos = 1;
+        item = list_first(estado->inventario);
+        while (item != NULL && pos < seleccion){
+            item = list_next(estado->inventario);
+            pos++;
+        }
+
+        if (item != NULL){
+            estado->puntaje -= item->puntos;
+            estado->peso -= item->peso;
+
+            List *nuevosItems = list_create();
+            Item *current = list_first(estado->inventario);
+            while (current != NULL){
+                if (current != item) list_pushBack(nuevosItems, current);
+                current = list_next(estado->inventario);
+            }
+            list_clean(estado->inventario);
+            estado->inventario = nuevosItems;
+        }
+        if (getchar() == '\n') break; // Esperar a que el usuario presione Enter
+    }
+    estado->tiempo--;
+}
+
+void avanzar(EstadoJuego *estado, Map *escenarios){
+    printf("\nSelecciona una dirección para avanzar:\n");
+    char direccion[16];
+    scanf("%s", direccion);
+
+    void *target = map_search(estado->actual->conexiones, direccion);
+    if (target == NULL){
+        printf("No puedes avanzar en esa dirección.\n");
+        presioneTeclaParaContinuar();
+        return;
+    }
+    int tiempoConsumido = (estado->peso + 1) / 10;
+    if ((estado->peso + 1) % 10 != 0) tiempoConsumido++; // Redondear hacia arriba
+    estado->tiempo -= tiempoConsumido;
+
+    int id = (long)target;
+    estado->actual = map_search(escenarios, (void*)(long)id);
+}
+
 void iniciarPartida(Map *escenarios){
     EstadoJuego estado;
     estado.actual = map_search(escenarios, (void*)(long)1);
