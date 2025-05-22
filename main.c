@@ -100,6 +100,72 @@ void cargarEscenarios(Map *escenarios, const char *nombreArchivo){
     fclose(archivo);
 }
 
+void mostrarMenuJuego(){
+    printf("\nOpciones:\n");
+    printf("1. Recoger items\n");
+    printf("2. Descartar items\n");
+    printf("3. Avanzar\n");
+    printf("4. Reiniciar\n");
+    printf("5. Salir\n");
+    printf("Selecciona: ");
+}
+
+void iniciarPartida(Map *escenarios){
+    EstadoJuego estado;
+    estado.actual = map_search(escenarios, (void*)(long)1);
+    if (!estado.actual) {
+        printf("No se pudo encontrar el escenario inicial.\n");
+        return;
+    }
+
+    estado.inventario = list_create();
+    estado.tiempo = TIEMPO_INCIAL;
+    estado.puntaje = 0;
+    estado.peso = 0;
+
+    while (estado.tiempo > 0 && !estado.actual->esFinal){
+        limpiarPantalla();
+        mostarEscenario(estado.actual);
+        mostrarEstado(&estado);
+
+        mostrarMenuJuego();
+        int opcion;
+        scanf("%d", &opcion);
+        getchar(); //Limpiar el buffer de entrada
+
+        switch (opcion){
+            case 1:
+                recogerItems(&estado);
+                break;
+            case 2:
+                descartarItems(&estado);
+                break;
+            case 3:
+                avanzar(&estado, escenarios);
+                break;
+            case 4:
+                list_clean(estado.inventario);
+                iniciarPartida(escenarios);
+                return;
+            case 5:
+                return;
+            default:
+                printf("Opcion no valida. Intente de nuevo.\n");
+                break;
+        }
+    }
+
+    limpiarPantalla();
+    if (estado.actual->esFinal){
+        printf("¡Felicidades! Has llegado al final del laberinto.\n");
+        printf("Puntaje total: %d\n", estado.puntaje);
+    } else {
+        printf("Se acabó el tiempo. Fin del juego.\n");
+    }
+    presioneTeclaParaContinuar();
+    list_clean(estado.inventario); // Limpiar el inventario
+}
+
 int main(){
     Map *escenarios = map_create(NULL);
     int opcion;
