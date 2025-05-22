@@ -47,42 +47,52 @@ void mostrarMenu() {
 
 List *analizarElem(char *itemsStr){
     List *items = list_create();
-    if (!itemsStr || strlen(itemsStr) == 0) return items; // Si no hay items, retornar lista vacia
+    if (!itemsStr || strlen(itemsStr) == 0) return items;
 
-    List *stringItems = split_string(itemsStr, ',');
-    for (char *itemsStr = list_first(stringItems); itemsStr != NULL; itemsStr = list_next(itemsStr)){
-        char *paren = strchr(itemsStr, '(');
-        if (!paren) continue; // Si no hay paréntesis, continuar
-
-        *paren = '\0'; // Terminar la cadena antes del paréntesis
-        char *nombre = itemsStr;
-        int puntos, peso;
-        if (sscanf(paren + 1, "%d pts, %d kg", &puntos, &peso) == 2) {
-            Item* item = malloc(sizeof(Item));
-            strcpy(item->nombre, nombre);
-            item->puntos = puntos;
-            item->peso = peso;
-            list_push_back(items, item);
+    List *stringItems = split_string(itemsStr, ";");
+    Item *item;
+    char *itemStr = list_first(stringItems);
+    while (itemStr != NULL) {
+        char *paren = strchr(itemStr, '(');
+        if (paren) {
+            *paren = '\0';
+            char *nombre = itemStr;
+            int puntos, peso;
+            if (sscanf(paren + 1, "%d pts, %d kg", &puntos, &peso) == 2) {
+                item = malloc(sizeof(Item));
+                strcpy(item->nombre, nombre);
+                item->puntos = puntos;
+                item->peso = peso;
+                list_pushBack(items, item);
+            }
         }
+        itemStr = list_next(stringItems);
     }
-    list_clean(stringItems); // Limpiar la lista de strings
+    list_clean(stringItems);
     return items;
 }
 
-void cargarEscenarios(Map *escenarios, const char *nombreArchivo){
+void cargarEscenarios(Map *escenarios, const char *nombreArchivo) {
     FILE *archivo = fopen(nombreArchivo, "r");
     if (!archivo) {
-        printf("Error al abrir el archivo\n");
+        perror("Error al abrir el archivo");
+        presioneTeclaParaContinuar();
         return;
     }
 
-    leer_linea_csv(archivo, ',');
+    leer_linea_csv(archivo, ','); // Saltar cabecera
 
-    char **campos = leer_linea_csv(archivo, ',');
-    while (campos != NULL){
+    char **campos;
+    while ((campos = leer_linea_csv(archivo, ',')) != NULL) {
         Escenario *esc = malloc(sizeof(Escenario));
+        if (!esc) {
+            printf("Error de memoria\n");
+            fclose(archivo);
+            return;
+        }
+        
         esc->conexiones = map_create(NULL);
-        esc->items = analizarELem(campos[3]);
+        esc->items = analizarElem(campos[3]);
 
         esc->id = atoi(campos[0]);
         strcpy(esc->nombre, campos[1]);
@@ -93,11 +103,11 @@ void cargarEscenarios(Map *escenarios, const char *nombreArchivo){
         if (campos[6][0] != '\0') map_insert(esc->conexiones, "derecha", (void*)(long)atoi(campos[6]));
         if (campos[7][0] != '\0') map_insert(esc->conexiones, "izquierda", (void*)(long)atoi(campos[7]));
 
-        esc->esFinal = (strcmp(campos[8], "1") == 0);
+        esc->esFinal = (strcmp(campos[8], "Si") == 0);
         map_insert(escenarios, (void*)(long)esc->id, esc);
-
     }
     fclose(archivo);
+    printf("Laberinto cargado exitosamente.\n");
 }
 
 void mostrarMenuJuego(){
@@ -110,7 +120,7 @@ void mostrarMenuJuego(){
     printf("Selecciona una opción del 1 al 5 para continuar...\n");
 }
 
-void mostrarEscenarios(Escenario *escenario){
+void mostrarEscenario(Escenario *escenario){
     printf("\n--- %s ---\n", escenario->nombre);
     printf("Descripción: %s\n", escenario->descripcion);
 
@@ -138,41 +148,40 @@ void mostrarEstado(EstadoJuego *estado){
     }
 }
 
-void recogerItem(EstadoJuego *estado){
+void recogerItem(EstadoJuego *estado){  // Nombre consistente
     printf("Selecciona un item para recoger:\n");
     int i = 1;
-    Item * item = list_first(estado->actual->items);
+    Item *item = list_first(estado->actual->items);
     while (item != NULL){
         printf("%d. %s\n", i++, item->nombre);
         item = list_next(estado->actual->items);
     }
+    
     int seleccion;
     scanf("%d", &seleccion);
-    while (seleccion == 1){
-        if (seleccion < 1 || seleccion > list_size(estado->actual->items)) break;
-
-        Item *target = NULL;
-        int pos = 1;
-        item = list_first(estado->actual->items);
-        while (item != NULL && pos < seleccion){
-            item = list_next(estado->actual->items);
-            pos++;
-        }
-        if (item != NULL){
-            list_pushBack(estado->inventario, item);
-            estado->puntaje += item->puntos;
-            estado->peso += item->peso;
-
-            List *nuevosItems= list_create();
-            Item *current = list_first(estado->actual->items);
-            while (current != NULL){
-                if (current != item) list_pushBack(nuevosItems, current);
-                current = list_next(estado->actual->items);
+    
+    // Buscar el item seleccionado
+    item = list_first(estado->actual->items);
+    for (int j = 1; j < seleccion && item != NULL; j++) {
+        item = list_next(estado->actual->items);
+    }
+    
+    if (item != NULL) {
+        list_pushBack(estado->inventario, item);
+        estado->puntaje += item->puntos;
+        estado->peso += item->peso;
+        
+        // Eliminar de la lista original
+        List *nuevosItems = list_create();
+        Item *current = list_first(estado->actual->items);
+        while (current != NULL) {
+            if (current != item) {
+                list_pushBack(nuevosItems, current);
             }
-            list_clean(estado->actual->items);
-            estado->actual->items = nuevosItems;
+            current = list_next(estado->actual->items);
         }
-        if (getchar() == '\n') break; // Esperar a que el usuario presione Enter
+        list_clean(estado->actual->items);
+        estado->actual->items = nuevosItems;
     }
     estado->tiempo--;
 }
@@ -218,41 +227,53 @@ void descartarItem(EstadoJuego *estado){
     estado->tiempo--;
 }
 
-void avanzar(EstadoJuego *estado, Map *escenarios){
+void avanzar(EstadoJuego *estado, Map *escenarios) {
     printf("\nSelecciona una dirección para avanzar:\n");
     char direccion[16];
     scanf("%s", direccion);
 
-    void *target = map_search(estado->actual->conexiones, direccion);
-    if (target == NULL){
+    MapPair *pair = map_search(estado->actual->conexiones, direccion);
+    if (pair == NULL) {
         printf("No puedes avanzar en esa dirección.\n");
         presioneTeclaParaContinuar();
         return;
     }
+
     int tiempoConsumido = (estado->peso + 1) / 10;
     if ((estado->peso + 1) % 10 != 0) tiempoConsumido++; // Redondear hacia arriba
     estado->tiempo -= tiempoConsumido;
 
-    int id = (long)target;
-    estado->actual = map_search(escenarios, (void*)(long)id);
+    int id = (long)pair->value;
+    estado->actual = (Escenario*)map_search(escenarios, (void*)(long)id);
 }
 
 void iniciarPartida(Map *escenarios){
+    if (mapEmpty(escenarios)) {
+        printf("Error: No hay laberinto cargado. Primero carga un laberinto.\n");
+        presioneTeclaParaContinuar();
+        return;
+    }
+
     EstadoJuego estado;
-    estado.actual = map_search(escenarios, (void*)(long)1);
-    if (!estado.actual) {
+    estado.actual = (Escenario*)map_search(escenarios, (void*)(long)1);
+    if (estado.actual == NULL) {
         printf("No se pudo encontrar el escenario inicial.\n");
+        presioneTeclaParaContinuar();
         return;
     }
 
     estado.inventario = list_create();
+    if (!estado.inventario) {
+        printf("Error: No se pudo crear el inventario\n");
+        return;
+    }
     estado.tiempo = TIEMPO_INCIAL;
     estado.puntaje = 0;
     estado.peso = 0;
 
     while (estado.tiempo > 0 && !estado.actual->esFinal){
         limpiarPantalla();
-        mostarEscenario(estado.actual);
+        mostrarEscenario(estado.actual);
         mostrarEstado(&estado);
 
         mostrarMenuJuego();
@@ -262,10 +283,10 @@ void iniciarPartida(Map *escenarios){
 
         switch (opcion){
             case 1:
-                recogerItems(&estado);
+                recogerItem(&estado);
                 break;
             case 2:
-                descartarItems(&estado);
+                descartarItem(&estado);
                 break;
             case 3:
                 avanzar(&estado, escenarios);
@@ -305,19 +326,18 @@ int main(){
 
         switch(opcion){
             case 1:
-                cargarEscenarios(escenarios, "graphquest.cvs");
-                printf("Laberinto cargado exitosamente.\n");
+                cargarEscenarios(escenarios, "graphquest.csv");
                 presioneTeclaParaContinuar();
                 break;
             case 2:
-                if (!mapEmpty(escenarios)) iniciarPartida(escenarios);
-                else printf("No hay laberinto cargado. Cargue uno primero.\n");
+                if (!mapEmpty(escenarios)) {
+                    iniciarPartida(escenarios);
+                } else {
+                    printf("Error: Primero debes cargar un laberinto (Opción 1)\n");
+                }
                 presioneTeclaParaContinuar();
                 break;
             case 3:
-                printf("Inventario: \n");
-                break;
-            case 4:
                 printf("Saliendo del juego...\n");
                 break;
             default:
@@ -326,6 +346,16 @@ int main(){
                 break;
         }
     } while (opcion != 3);
+
+    MapPair *pair = map_first(escenarios);
+    while (pair != NULL) {
+        Escenario *esc = (Escenario*)pair->value;
+        list_clean(esc->items);
+        map_clean(esc->conexiones);
+        free(esc);
+        pair = map_next(escenarios);
+    }
+    map_clean(escenarios);
 
     return 0;
 }
