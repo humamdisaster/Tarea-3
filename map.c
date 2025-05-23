@@ -70,13 +70,22 @@ MapPair *map_remove(Map *map, void *key) {
   return NULL;
 }
 
-MapPair *map_search(Map *map, void *key) {
-  for (MapPair *pair = list_first(map->ls); pair != NULL;
-       pair = list_next(map->ls)) {
-    if (_is_equal(map, pair, key))
-      return pair;
-  }
-  return NULL;
+MapPair* map_search(Map* map, void* clave) {
+    if (!map || !clave) return NULL;
+    
+    MapPair* pair = list_first(map->ls);
+    while (pair != NULL) {
+        if (map->is_equal && map->is_equal(clave, pair->key)) {
+            return pair;
+        } else if (!map->is_equal && map->lower_than) {
+            if (!map->lower_than(clave, pair->key) && 
+                !map->lower_than(pair->key, clave)) {
+                return pair;
+            }
+        }
+        pair = list_next(map->ls);
+    }
+    return NULL;
 }
 
 MapPair *map_first(Map *map) { return list_first(map->ls); }

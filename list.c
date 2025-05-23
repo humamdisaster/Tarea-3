@@ -185,18 +185,17 @@ void *list_popCurrent(List *L) {
 }
 
 void list_clean(List *L) {
-  if (L == NULL) {
-    return; // Lista no inicializada
-  }
-  Node *current = L->head;
-  Node *next;
-  while (current != NULL) {
-    next = current->next;
-    free(current);
-    current = next;
-  }
-  L->head = NULL;
-  L->tail = NULL;
-  L->current = NULL;
-  L->size = 0;
+    if (L == NULL) return;
+    
+    Node* current = L->head;
+    while (current != NULL) {
+        Node* temp = current;
+        current = current->next;
+        free(temp); // Solo libera el nodo, no los datos
+    }
+    
+    L->head = NULL;
+    L->tail = NULL;
+    L->current = NULL;
+    L->size = 0;
 }

@@ -39,6 +39,8 @@
  */
 char **leer_linea_csv(FILE *archivo, char separador);
 
+void liberar_campos(char **campos);
+
 List *split_string(const char *str, const char *delim);
 
 // Función para limpiar la pantalla
