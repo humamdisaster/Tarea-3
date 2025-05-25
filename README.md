@@ -32,7 +32,7 @@
 ## Ejecución del Programa:
 ```bash
 gcc main.c map.c list.c extra.c -o graphquest  #Compilación
-./graphquest  #./graphquest
+./graphquest  #Ejecución
 ```
 
 ## Ejemplo de uso:
