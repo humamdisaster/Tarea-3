@@ -9,7 +9,7 @@
 #include "list.h"
 
 #define MAX_LIN_LEN 1024
-#define TIEMPO_INICIAL 14
+#define TIEMPO_INICIAL 10
 
  //Estructura para almacenar los items del juego
 typedef struct{
@@ -26,7 +26,7 @@ typedef struct{
     List* items; //Lista de items disponibles en el escenario
     Map* conexiones; //Mapa de conexiones a otros escenarios
     bool esFinal; //Indica si el escenario es el final del juego
-} Escenario;
+} Escenario; //Grafo
 
 //Estructura para almacenar el estado del juego
 typedef struct{
@@ -213,7 +213,7 @@ void cargarEscenarios(Map* escenarios, const char* nombreArchivo){
         //Asignar si el escenario es final
         esc->esFinal = (strcasecmp(campos[8], "Si") == 0);
 
-        //Agregar el escenario al mapa de escenarios
+        //Agregar el escenario al grafo de escenarios
         void* key = (void*)(long)esc->id; //Convertir el ID a puntero
         map_insert(escenarios, key, esc); //Insertar el escenario en el mapa
         escenariosCargados++; //Incrementar el contador de escenarios cargados
@@ -488,7 +488,7 @@ void iniciarPartida(Map* escenarios){
 
 //Funcion principal
 int main(){
-    Map* escenarios = map_create(compararClavesNumericas); //Crear el mapa de escenarios
+    Map* escenarios = map_create(compararClavesNumericas); //Crear el grafo de escenarios
     if (!escenarios){ //Verificar si el mapa se creó correctamente
         printf("ERROR CRITICO: No se pudo crear el mapa de escenarios\n");
         return 1; //Salir del programa con error
