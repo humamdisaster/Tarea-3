@@ -109,7 +109,10 @@ List *split_string(const char *str, const char *delim) {
 void limpiarPantalla() { system("clear"); }
 
 void presioneTeclaParaContinuar() {
-  puts("Presione una tecla para continuar...");
-  getchar(); // Consume el '\n' del buffer de entrada
-  getchar(); // Espera a que el usuario presione una tecla
+    printf("\nPresione Enter para continuar...");
+    // Limpiar buffer primero
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+    // Esperar nueva entrada
+    while ((c = getchar()) != '\n' && c != EOF);
 }
